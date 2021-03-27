@@ -32,13 +32,70 @@ def hide_hand_cursor(a):
     a.widget.config(cursor='')
 
 
-class KeyInputHandler(object):
-    def __init__(self, root, displayhandler):
+class DisplayNavigationManager(object):
+    def __init__(self, root):
         super().__init__()
         self.root = root
+        self.display_text = root.text
         self.input_text = root.input_text
+        self.nav_history = []
+
+    def update_search_text(self):
+        self.nav_history[-1].update_search_text()
+
+    def clipboard_search(self, clipboard):
+        self.nav_history[-1].clipboard_search(clipboard)
+
+    def exit_all(self):
+        while len(self.nav_history)>1:
+            self.nav_history[-1].run_exit()
+            self.nav_history.pop()
+            self.nav_history[-1].run_return()
+        self.nav_history[0].run_exit()
+
+    def _navigate(self, cls, *k, **kk):
+        obj = cls(self, *k, **kk)
+        self.nav_history.append(obj)
+        obj.run_new()
+
+    def navigate(self, cls, *k, **kk):
+        if self.nav_history:
+            self.nav_history[-1].run_leave()
+        self._navigate(cls, *k, **kk)
+
+    def navigate_replace(self, cls, *k, **kk):
+        self.nav_history[-1].run_exit()
+        self.nav_history.pop()
+        self._navigate(cls, *k, **kk)
+
+    def navigate_back(self):
+        if len(self.nav_history) <= 1:
+            return
+        self.nav_history[-1].run_exit()
+        self.nav_history.pop()
+        nav = self.nav_history[-1]
+        nav.run_return()
+
+    def char_press(self, e):
+        self.nav_history[-1].char_press(e)
+
+
+class KeyInputHandler(object):
+    def __init__(self, displaynavigation, displayhandler):
+        super().__init__()
+        self.displaynavigation = displaynavigation
+        self.input_text = displaynavigation.input_text
         self.displayhandler = displayhandler
         self.search_string = ''
+
+    def navigate(self, cls, *k, **kk):
+        self.displaynavigation.navigate(cls, *k, **kk)
+
+    def navigate_replace(self, cls, *k, **kk):
+        self.displaynavigation.navigate_replace(cls, *k, **kk)
+
+    def navigate_back(self):
+        self.displaynavigation.navigate_back()
 
     def update_search_text(self):
         self.input_text['state'] = tkinter.NORMAL
@@ -49,7 +106,7 @@ class KeyInputHandler(object):
     def update_search_string(self, s):
         # We don't want to slow down key handling during barcode scanning
         # If an update is required, set a timer and handle it later to allow more input
-        self.root.trigger_search_update_timer()
+        self.displaynavigation.root.trigger_search_update_timer()
         self.search_string = s
 
     def keypress(self, e):
@@ -104,9 +161,7 @@ class KeyInputHandler(object):
             return
         if e.keycode == 9: # escape
             if self.search_string == '':
-                if len(self.root.nav_history) > 1:
-                    self.displayhandler.navigate_back()
-                    return
+                self.navigate_back()
             self.update_search_string('')
             return
         if e.char == '\r':
@@ -120,36 +175,32 @@ class KeyInputHandler(object):
         print(e)
 
 class DisplayHandlerBase(object):
-    def __init__(self, root):
+    def __init__(self, displaynavigation):
         super().__init__()
-        self.root = root
-        self.text = root.text
-        self.run_new()
-        self.input_handler = KeyInputHandler(self.root, self)
+        self.displaynavigation = displaynavigation
+        self.text = displaynavigation.display_text
+        self.input_handler = KeyInputHandler(self.displaynavigation, self)
 
-    def navigate(self, cls, *k, **kk):
-        self.root.navigate(cls, *k, **kk)
-
-    def navigate_replace(self, cls, *k, **kk):
-        self.run_exit()
-        self.root.nav_history.pop()
-        self.root.navigate(cls, *k, **kk)
-
-    def navigate_back(self):
-        self.run_exit()
-        self.root.nav_history.pop()
-        nav = self.root.nav_history[-1]
-        nav.run_return()
-        nav.display()
-
-    def run_new(self):
+    def run_leave(self):
         pass
 
     def run_return(self):
-        pass
+        self.display()
+
+    def run_new(self):
+        self.display()
 
     def run_exit(self):
         pass
+
+    def navigate(self, cls, *k, **kk):
+        self.displaynavigation.navigate(cls, *k, **kk)
+
+    def navigate_replace(self, cls, *k, **kk):
+        self.displaynavigation.navigate_replace(cls, *k, **kk)
+
+    def navigate_back(self):
+        self.displaynavigation.navigate_back()
 
     def display_contents(self):
         self.text.insert(tkinter.END, "Not implemented!")
@@ -254,7 +305,7 @@ class Quit(DisplayHandler):
     def text_search(self, s):
         s = s.strip()
         if s.lower() == 'y':
-            self.root.on_closing()
+            self.displaynavigation.root.on_closing()
             return
         if s.lower() == 'n':
             self.navigate_back()
@@ -388,6 +439,7 @@ class AddStock(DisplayHandler):
             self.add_item(self.newitem)
         else:
             self.newitem = None
+        super().run_return()
 
     def run_exit(self):
         for item, quantity in self.list.items():
@@ -395,6 +447,7 @@ class AddStock(DisplayHandler):
             change.item = item
             change.change = quantity
             change.save()
+        super().run_exit()
 
     def display_contents(self):
         self.text.insert(tkinter.END, "Add Items to Pantry\n")
@@ -468,7 +521,6 @@ class Root(tkinter.Tk):
         #self.search_string = ''
         self.search_update_timer_set = False
         self.last_clipboard_contents = ''
-        self.nav_history = []
 
         self.title("Parts DB")
         self.iconphoto(False, tkinter.PhotoImage(file='icon.png'))
@@ -540,7 +592,8 @@ class Root(tkinter.Tk):
 
         self.bind("<KeyPress>", self.char_press)
 
-        self.navigate(Home)
+        self.displaynavigation = DisplayNavigationManager(self)
+        self.displaynavigation.navigate(Home)
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.bind("<FocusIn>", self.handle_focus)
@@ -548,27 +601,17 @@ class Root(tkinter.Tk):
         tkinter.Tk.report_callback_exception = self.show_error
 
     def char_press(self, e):
-        self.nav_history[-1].char_press(e)
-
-    def navigate(self, cls, *k, **kk):
-        obj = cls(self, *k, **kk)
-        self.nav_history.append(obj)
-        obj.display()
+        self.displaynavigation.char_press(e)
 
     def on_closing(self):
-        while len(self.nav_history)>1:
-            self.nav_history[-1].run_exit()
-            self.nav_history.pop()
-            self.nav_history[-1].run_return()
-        self.nav_history[0].run_exit()
-
+        self.displaynavigation.exit_all()
         self.destroy()
 
     def handle_focus(self, e):
         clipboard = self.clipboard_get()
         if clipboard != self.last_clipboard_contents:
             self.last_clipboard_contents = clipboard
-            self.nav_history[-1].clipboard_search(clipboard)
+            self.displaynavigation.clipboard_search(clipboard)
 
     def show_error(self, *args):
         err = traceback.format_exception(*args)
@@ -581,13 +624,12 @@ class Root(tkinter.Tk):
 
     def search_update_timer(self):
         self.search_update_timer_set = False
-        self.nav_history[-1].update_search_text()
-        #self.search_label_string.set(self.search_string)
+        self.displaynavigation.update_search_text()
 
     def open_stockitem(self, k):
         stockitem = click_text(k, 'stockitem')[2].strip()
         stockitem = db.models.StockItem.objects.get(barcode=stockitem)
-        self.navigate(DisplayStockItem, stockitem)
+        self.displaynavigation.navigate(DisplayStockItem, stockitem)
 
     """
 
