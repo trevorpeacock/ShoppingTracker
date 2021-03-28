@@ -6,7 +6,9 @@ from django.db import models
 #    name = models.CharField(max_length=100)
 
 class StockItem(models.Model):
-    barcode = models.CharField(max_length=50)
+    # TODO: Barcodes must be unique
+    barcode = models.CharField(max_length=50, blank=False, null=False)
+    # TODO: Name must not be ''
     name = models.CharField(max_length=100, blank=False, null=False)
     brand = models.CharField(max_length=100, blank=True, null=False)
     notes = models.TextField()

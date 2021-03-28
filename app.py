@@ -128,6 +128,30 @@ class SearchStock(DisplayHandler):
         return
 
 
+class DeleteStockItem(DisplayHandler):
+    def __init__(self, root, stockitem):
+        super().__init__(root)
+        self.stockitem = stockitem
+
+    def display_contents(self):
+        self.text.insert(tkinter.END, "\n")
+        self.text.insert(tkinter.END, "\n")
+        self.text.insert(tkinter.END, "Are you sure you want to delete {}?\n".format(self.stockitem.name))
+        self.text.insert(tkinter.END, "\n")
+        self.text.insert(tkinter.END, "Press y or n then enter.\n")
+
+    def text_search(self, s):
+        s = s.strip()
+        if s.lower() == 'y':
+            self.stockitem.levelchange_set.all().delete()
+            self.stockitem.delete()
+            self.navigate_back()
+            return
+        if s.lower() == 'n':
+            self.navigate_replace(DisplayStockItem, self.stockitem)
+            return
+
+
 class DisplayStockItem(DisplayHandler):
     def __init__(self, root, stockitem):
         super().__init__(root)
@@ -155,6 +179,9 @@ class DisplayStockItem(DisplayHandler):
         s = s.strip()
         if s.lower() == 'e':
             self.navigate(NewStockItem, self.stockitem)
+            return
+        if s.lower() == 'd':
+            self.navigate_replace(DeleteStockItem, self.stockitem)
             return
         super().text_search(s)
 
