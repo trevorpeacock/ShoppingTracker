@@ -33,6 +33,7 @@ def hide_hand_cursor(a):
 
 
 class DisplayNavigationManager(object):
+    # TODO: Auto timeout, return to home
     def __init__(self, root):
         super().__init__()
         self.root = root
@@ -80,13 +81,13 @@ class DisplayNavigationManager(object):
         self.nav_history[-1].char_press(e)
 
 
-class KeyInputHandler(object):
+class BaseInputHandler(object):
+    # TODO: Automatically detect barcode scanner input (fast input) and handle separately
     def __init__(self, displaynavigation, displayhandler):
         super().__init__()
         self.displaynavigation = displaynavigation
         self.input_text = displaynavigation.input_text
         self.displayhandler = displayhandler
-        self.search_string = ''
 
     def navigate(self, cls, *k, **kk):
         self.displaynavigation.navigate(cls, *k, **kk)
@@ -100,14 +101,47 @@ class KeyInputHandler(object):
     def update_search_text(self):
         self.input_text['state'] = tkinter.NORMAL
         self.input_text.delete('1.0', tkinter.END)
-        self.input_text.insert(tkinter.END, self.search_string)
+        self.display_search_text()
         self.input_text['state'] = tkinter.DISABLED
 
-    def update_search_string(self, s):
-        # We don't want to slow down key handling during barcode scanning
-        # If an update is required, set a timer and handle it later to allow more input
-        self.displaynavigation.root.trigger_search_update_timer()
-        self.search_string = s
+    def display_search_text(self):
+        pass
+
+    def char_press_up(self):
+        self.displayhandler.char_press_up()
+
+    def char_press_down(self):
+        self.displayhandler.char_press_down()
+
+    def char_press_left(self):
+        self.displayhandler.char_press_left()
+
+    def char_press_right(self):
+        self.displayhandler.char_press_right()
+
+    def char_press_pgup(self):
+        self.displayhandler.char_press_pgup()
+
+    def char_press_pgdown(self):
+        self.displayhandler.char_press_pgdown()
+
+    def char_press_home(self):
+        pass
+
+    def char_press_end(self):
+        pass
+
+    def char_press_backspace(self):
+        pass
+
+    def char_press_escape(self):
+        self.navigate_back()
+
+    def char_press_enter(self):
+        pass
+
+    def char_press_text(self, c):
+        pass
 
     def keypress(self, e):
         if e.state & 0x0001: # Shift
@@ -138,56 +172,155 @@ class KeyInputHandler(object):
             return
 
         if e.keysym == 'Up':
-            self.displayhandler.char_press_up()
+            self.char_press_up()
             return
         if e.keysym == 'Down':
-            self.displayhandler.char_press_down()
+            self.char_press_down()
             return
         if e.keysym == 'Left':
-            self.displayhandler.char_press_left()
+            self.char_press_left()
             return
         if e.keysym == 'Right':
-            self.displayhandler.char_press_right()
+            self.char_press_right()
             return
         if e.keysym == 'Prior':
-            self.displayhandler.char_press_pgup()
+            self.char_press_pgup()
             return
         if e.keysym == 'Next':
-            self.displayhandler.char_press_pgdown()
+            self.char_press_pgdown()
+            return
+        if e.keysym == 'Home':
+            self.char_press_home()
+            return
+        if e.keysym == 'End':
+            self.char_press_end()
             return
 
         if e.keycode == 22: # backspace
-            self.update_search_string(self.search_string[:-1])
+            self.char_press_backspace()
             return
         if e.keycode == 9: # escape
-            if self.search_string == '':
-                self.navigate_back()
-            self.update_search_string('')
+            self.char_press_escape()
             return
         if e.char == '\r':
-            self.displayhandler.text_search(self.search_string)
-            self.update_search_string('')
+            self.char_press_enter()
             return
 
         if e.char != '':
-            self.update_search_string(self.search_string + e.char)
+            self.char_press_text(e.char)
             return
         print(e)
+
+
+class KeyInputHandler(BaseInputHandler):
+    def char_press_text(self, c):
+        self.displayhandler.text_search(c)
+
+    def display_search_text(self):
+        self.input_text.insert(tkinter.END, "COMMAND > ")
+        self.input_text.insert(tkinter.END, " ", 'text_input_cursor')
+
+
+class TypingInputHandler(KeyInputHandler):
+    def __init__(self, displaynavigation, displayhandler, length=20):
+        super().__init__(displaynavigation, displayhandler)
+        self.search_string = ''
+        self.cursor_pos = 0
+        self.length = length
+
+    def update_search_string(self, s=None):
+        # We don't want to slow down key handling during barcode scanning
+        # If an update is required, set a timer and handle it later to allow more input
+        self.displaynavigation.root.trigger_search_update_timer()
+        if s is not None:
+            self.search_string = s
+
+    def display_search_text(self):
+        self.input_text.insert(tkinter.END, "INPUT > " + self.search_string)
+        self.input_text.insert(tkinter.END, " ", 'text_input_cursor')
+
+    def char_press_left(self):
+        self.cursor_pos += -1
+        if self.cursor_pos < 0:
+            self.cursor_pos = 0
+        self.update_search_string()
+
+    def char_press_right(self):
+        self.cursor_pos += 1
+        if self.cursor_pos > len(self.search_string):
+            self.cursor_pos = len(self.search_string)
+        self.update_search_string()
+
+    def char_press_home(self):
+        self.cursor_pos = 0
+        self.update_search_string()
+
+    def char_press_end(self):
+        self.cursor_pos = len(self.search_string)
+        self.update_search_string()
+
+    def char_press_backspace(self):
+        self.update_search_string(self.search_string[:self.cursor_pos-1] + self.search_string[self.cursor_pos:])
+        self.char_press_left()
+
+    def char_press_escape(self):
+        if self.search_string != '':
+            self.update_search_string('')
+            self.cursor_pos = 0
+        else:
+            super().char_press_escape()
+
+    def char_press_enter(self):
+        self.displayhandler.text_search(self.search_string)
+        self.update_search_string('')
+
+    def char_press_text(self, c):
+        if self.cursor_pos != self.length:
+            if len(self.search_string) == self.length:
+                return
+            self.search_string = self.search_string[:self.cursor_pos] + c + self.search_string[self.cursor_pos:]
+        else:
+            self.search_string = self.search_string[:self.cursor_pos-1] + c
+        self.search_string = self.search_string[:self.length]
+        self.char_press_right()
+
+    def display(self, text):
+        s = "{{:{}}}".format(str(self.length)).format(self.search_string)
+        if self.cursor_pos < self.length:
+            text.insert(tkinter.END, s[:self.cursor_pos], 'text_input')
+            text.insert(tkinter.END, s[self.cursor_pos], 'text_input_cursor')
+            text.insert(tkinter.END, s[self.cursor_pos+1:], 'text_input')
+        else:
+            text.insert(tkinter.END, s[:self.cursor_pos-1], 'text_input')
+            text.insert(tkinter.END, s[self.cursor_pos-1], 'text_input_cursor')
+
+    def update_search_text(self):
+        super().update_search_text()
+        self.displayhandler.display()
+
 
 class DisplayHandlerBase(object):
     def __init__(self, displaynavigation):
         super().__init__()
         self.displaynavigation = displaynavigation
         self.text = displaynavigation.display_text
-        self.input_handler = KeyInputHandler(self.displaynavigation, self)
+        self.input_handler = None
+
+    key_input_handler_class = KeyInputHandler
+
+    def create_input_handler(self):
+        self.input_handler = self.key_input_handler_class(self.displaynavigation, self)
 
     def run_leave(self):
         pass
 
     def run_return(self):
         self.display()
+        self.input_handler.update_search_text()
 
     def run_new(self):
+        self.create_input_handler()
+        self.input_handler.update_search_text()
         self.display()
 
     def run_exit(self):
@@ -208,9 +341,7 @@ class DisplayHandlerBase(object):
     def display(self):
         self.text['state'] = tkinter.NORMAL
         self.text.delete('1.0', tkinter.END)
-
         self.display_contents()
-
         self.text['state'] = tkinter.DISABLED
 
     def text_search(self, s):
@@ -358,9 +489,15 @@ class SearchStock(DisplayHandler):
     def __init__(self, root):
         super().__init__(root)
 
+    key_input_handler_class = TypingInputHandler
+
     def display_contents(self):
         self.text.insert(tkinter.END, "Type something to search, and press enter, or scan an item.\n")
         self.text.insert(tkinter.END, "Press ESC to cancel.\n")
+        self.text.insert(tkinter.END, "\n")
+        self.text.insert(tkinter.END, "Search: ")
+        self.input_handler.display(self.text)
+        self.text.insert(tkinter.END, "\n")
 
     def text_search(self, s):
         try:
@@ -376,6 +513,7 @@ class SearchStock(DisplayHandler):
 
 
 class DisplayStockItem(DisplayHandler):
+    # TODO: Edit stock item with multiple input fields
     def __init__(self, root, stockitem):
         super().__init__(root)
         self.stockitem = stockitem
@@ -405,6 +543,11 @@ class NewStockItem(DisplayHandler):
         self.stockitem = stockitem
         self.step = 1
 
+    key_input_handler_class = TypingInputHandler
+
+    def create_input_handler(self):
+        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 100)
+
     def display_contents(self):
         self.text.insert(tkinter.END, "New Item Details\n")
         self.text.insert(tkinter.END, "================\n")
@@ -413,7 +556,9 @@ class NewStockItem(DisplayHandler):
             self.text.insert(tkinter.END, "Enter name of new item\n")
         self.text.insert(tkinter.END, "\n")
         self.text.insert(tkinter.END, f"Barcode: {self.stockitem.barcode}\n")
-        self.text.insert(tkinter.END, f"Name:    {self.stockitem.name}\n")
+        self.text.insert(tkinter.END, f"Name:    ")
+        self.input_handler.display(self.text)
+        self.text.insert(tkinter.END, f"\n")
 
     def text_search(self, s):
         if self.step == 1:
@@ -427,6 +572,11 @@ class AddStock(DisplayHandler):
         super().__init__(root)
         self.list = {}
         self.newitem = None
+
+    key_input_handler_class = TypingInputHandler
+
+    def create_input_handler(self):
+        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 50)
 
     def add_item(self, stockitem):
         if stockitem in self.list:
@@ -548,47 +698,22 @@ class Root(tkinter.Tk):
         self.text.tag_bind("stockitem", "<Leave>", hide_hand_cursor)
         self.text.tag_bind('stockitem', '<1>', self.open_stockitem)
 
-        """self.text.tag_configure('location', font=font_bold)
-        self.text.tag_bind("location", "<Enter>", show_hand_cursor)
-        self.text.tag_bind("location", "<Leave>", hide_hand_cursor)
-        self.text.tag_bind('location', '<1>', self.open_location)
-
-        self.text.tag_configure('invoiceno', font=font_bold)
-        self.text.tag_bind("invoiceno", "<Enter>", show_hand_cursor)
-        self.text.tag_bind("invoiceno", "<Leave>", hide_hand_cursor)
-        self.text.tag_bind('invoiceno', '<1>', self.open_invoice)
-
-        self.text.tag_configure('part', font=font_bold)
-        self.text.tag_bind("part", "<Enter>", show_hand_cursor)
-        self.text.tag_bind("part", "<Leave>", hide_hand_cursor)
-        self.text.tag_bind('part', '<1>', self.open_part)
-
-        self.text.tag_configure('supplierpart', font=font_bold)
-        self.text.tag_bind("supplierpart", "<Enter>", show_hand_cursor)
-        self.text.tag_bind("supplierpart", "<Leave>", hide_hand_cursor)
-        self.text.tag_bind('supplierpart', '<1>', self.open_supplierpart)
-
-        self.text.tag_configure('manufacturerpart', font=font_bold)
-        self.text.tag_bind("manufacturerpart", "<Enter>", show_hand_cursor)
-        self.text.tag_bind("manufacturerpart", "<Leave>", hide_hand_cursor)
-        self.text.tag_bind('manufacturerpart', '<1>', self.open_manufacturerpart)"""
+        self.text.tag_configure('text_input', background='Black', foreground='White')
 
         self.text.pack(fill='both', expand=True)
         self.text['state'] = tkinter.DISABLED
 
-        #self.search_label_string = tkinter.StringVar()
-        #self.search_label = tkinter.Label(self, textvariable=self.search_label_string)
-        #self.search_label.pack()
 
         self.input_text = tkinter.Text(self, wrap='none', height=1, bg='Black', fg='White')
         self.input_text.configure(font=font)
         self.input_text.pack(fill='both', expand=False)
-        #self.input_text.pack()
 
         self.input_text['state'] = tkinter.NORMAL
         self.input_text.delete('1.0', tkinter.END)
-        self.input_text.insert(tkinter.END, "hi")
+        self.input_text.insert(tkinter.END, "")
         self.input_text['state'] = tkinter.DISABLED
+
+        self.blink_input_cursor1()
 
         self.bind("<KeyPress>", self.char_press)
 
@@ -630,6 +755,16 @@ class Root(tkinter.Tk):
         stockitem = click_text(k, 'stockitem')[2].strip()
         stockitem = db.models.StockItem.objects.get(barcode=stockitem)
         self.displaynavigation.navigate(DisplayStockItem, stockitem)
+
+    def blink_input_cursor1(self):
+        self.text.tag_configure('text_input_cursor', background='Black', foreground='White')
+        self.input_text.tag_configure('text_input_cursor', background='Black', foreground='White')
+        self.after(200, self.blink_input_cursor2)
+
+    def blink_input_cursor2(self):
+        self.text.tag_configure('text_input_cursor', background='White', foreground='Black')
+        self.input_text.tag_configure('text_input_cursor', background='White', foreground='Black')
+        self.after(200, self.blink_input_cursor1)
 
     """
 
