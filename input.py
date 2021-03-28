@@ -142,10 +142,10 @@ class KeyInputHandler(BaseInputHandler):
 
 
 class TypingInputHandler(KeyInputHandler):
-    def __init__(self, displaynavigation, displayhandler, length=20):
+    def __init__(self, displaynavigation, displayhandler, length=20, text=""):
         super().__init__(displaynavigation, displayhandler)
-        self.search_string = ''
-        self.cursor_pos = 0
+        self.search_string = text
+        self.cursor_pos = len(self.search_string)
         self.length = length
 
     def update_search_string(self, s=None):

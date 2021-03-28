@@ -11,6 +11,29 @@ from navigation import *
 from input import *
 from display import *
 from gui import TextApplication
+import openfoodfacts
+import requests
+import settings
+
+
+def lookup_item_online(stockitem):
+    print("Looking up", stockitem.barcode)
+    search_result = openfoodfacts.products.get_product(stockitem.barcode)
+    print(search_result)
+    if search_result['status'] == 1:
+        stockitem.name = search_result['product']['product_name']
+        if 'product_name_en' in search_result['product']:
+            stockitem.name = search_result['product']['product_name_en']
+        if 'brands' in search_result['product']:
+            stockitem.brand = search_result['product']['brands']
+        return True
+    search_result = requests.get(
+        "https://eandata.com/feed/?v=3&keycode={}&mode=json&find={}".format(
+            settings.EANDATA_KEY, stockitem.barcode)).json()
+    print(search_result)
+    if search_result['status']['code'] == '200':
+        stockitem.name = search_result['product']['attributes']['product']
+        return True
 
 
 class Home(DisplayHandler):
@@ -160,7 +183,7 @@ class NewStockItem(DisplayHandler):
     key_input_handler_class = TypingInputHandler
 
     def create_input_handler(self):
-        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 100)
+        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 100, self.stockitem.name)
 
     def display_contents(self):
         self.text.insert(tkinter.END, "New Item Details\n")
@@ -173,12 +196,39 @@ class NewStockItem(DisplayHandler):
         self.text.insert(tkinter.END, f"Name:    ")
         self.input_handler.display(self.text)
         self.text.insert(tkinter.END, f"\n")
+        self.text.insert(tkinter.END, f"Brand:    {self.stockitem.brand}\n")
 
     def text_search(self, s):
         if self.step == 1:
             self.stockitem.name = s.strip()
             self.stockitem.save()
             self.navigate_back()
+
+
+class LookupNewStockItem(DisplayHandler):
+    def __init__(self, root, stockitem):
+        super().__init__(root)
+        self.stockitem = stockitem
+        #self.step = 1
+        #self.total_steps = 2
+
+    key_input_handler_class = KeyInputHandler # TODO: need an ignore key handler
+
+    def display_contents(self):
+        self.text.insert(tkinter.END, "Looking up item online\n")
+        self.text.insert(tkinter.END, "======================\n")
+        self.text.insert(tkinter.END, "\n")
+        self.text.insert(tkinter.END, "   Please wait...\n")
+        #self.text.insert(tkinter.END, "  {} / {}\n".format(self.step, self.total_steps))
+
+    def run_new(self):
+        super().run_new()
+        subprocess.call(['play', 'bell.wav'])
+        self.displaynavigation.root.after(50, self.lookup_online)
+
+    def lookup_online(self):
+        lookup_item_online(self.stockitem)
+        self.navigate_replace(NewStockItem, self.stockitem)
 
 
 class AddStock(DisplayHandler):
@@ -234,11 +284,9 @@ class AddStock(DisplayHandler):
             self.add_item(stockitem)
             self.display()
         except db.models.StockItem.DoesNotExist:
-            stockitem = db.models.StockItem()
-            stockitem.barcode = s.lower()
-            subprocess.call(['play', 'bell.wav'])
-            self.newitem = stockitem
-            self.navigate(NewStockItem, stockitem)
+            self.newitem = db.models.StockItem()
+            self.newitem.barcode = s.lower()
+            self.navigate(LookupNewStockItem, self.newitem)
 
 
 class PrintShoppingList(DisplayHandler):

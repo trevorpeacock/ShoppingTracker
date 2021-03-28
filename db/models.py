@@ -7,8 +7,8 @@ from django.db import models
 
 class StockItem(models.Model):
     barcode = models.CharField(max_length=50)
-    name = models.CharField(max_length=100, blank=True, null=True)
-    brand = models.CharField(max_length=100, blank=True, null=True)
+    name = models.CharField(max_length=100)
+    brand = models.CharField(max_length=100)
     notes = models.TextField()
 #    category = models.ForeignKey(Category, null=True, on_delete=models.PROTECT)
 

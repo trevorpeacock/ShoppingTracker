@@ -2,7 +2,7 @@
 venv:
 	#sudo apt install make python3-virtualenv python3-tk sox
 	virtualenv --python /usr/bin/python3 venv
-	bash -c ". venv/bin/activate && pip install django"
+	bash -c ". venv/bin/activate && pip install django openfoodfacts"
 
 run_test: venv
 	bash -c ". venv/bin/activate && python test.py"

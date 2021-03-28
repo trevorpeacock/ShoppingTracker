@@ -1,9 +1,7 @@
 DATA_PATH = './data/'
 
-STOCK_PART_FILE = 'stock_part.csv'
-SUPPLIER_PART_FILE = 'supplier_part.csv'
-PART_CHANGE_FILE = 'part_change.csv'
-
+# API Key from eandata.com
+EANDATA_KEY = ''
 
 from pathlib import Path
 
