@@ -111,7 +111,7 @@ class ListStock(DisplayHandler):
         self.text.insert(tkinter.END, "Press ESC to go back or click on an item to view details\n")
         self.text.insert(tkinter.END, "\n")
         for item in db.models.StockItem.objects.all():
-            self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
+            self.text.insert(tkinter.END, "{:14}".format(item.barcode), 'stockitem')
             self.text.insert(tkinter.END, "  ")
             self.text.insert(tkinter.END, "{:3}".format(sum([c.change for c in item.levelchange_set.all()])))
             self.text.insert(tkinter.END, " x  ")
@@ -136,7 +136,7 @@ class SearchStockResults(DisplayHandler):
         for item in db.models.StockItem.objects.all():
             if self.string.lower() in item.name.lower():
                 self.text.insert(tkinter.END, "  ")
-                self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
+                self.text.insert(tkinter.END, "{:14}".format(item.barcode), 'stockitem')
                 self.text.insert(tkinter.END, "  ")
                 self.text.insert(tkinter.END, item)
                 self.text.insert(tkinter.END, "\n")
@@ -216,7 +216,7 @@ class NewStockItem(DisplayHandler):
         self.text.insert(tkinter.END, f"Name:    ")
         self.input_handler.display(self.text)
         self.text.insert(tkinter.END, f"\n")
-        self.text.insert(tkinter.END, f"Brand:    {self.stockitem.brand}\n")
+        self.text.insert(tkinter.END, f"Brand:   {self.stockitem.brand}\n")
 
     def text_search(self, s):
         if self.step == 1:
@@ -328,7 +328,7 @@ class PrintShoppingList(DisplayHandler):
             levelchanges_neg_recent = [c for c in levelchanges_neg if len(levelchanges_pos) == 0 or c.date > levelchanges_pos[-1].date]
             if len(levelchanges_neg_recent) == 0:
                 continue
-            self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
+            self.text.insert(tkinter.END, "{:14}".format(item.barcode), 'stockitem')
             self.text.insert(tkinter.END, "  ")
             self.text.insert(tkinter.END, "{:3}".format(-sum([c.change for c in levelchanges_neg_recent])))
             self.text.insert(tkinter.END, " x  ")
