@@ -7,7 +7,7 @@ import hmac
 
 
 def lookup_item_online(stockitem):
-    if not stockitem.isdigit():
+    if not stockitem.barcode.isdigit():
         return
     print("Looking up", stockitem.barcode)
     sig = base64.b64encode(
