@@ -78,6 +78,7 @@ class TextApplication(tkinter.Tk):
         self.text.tag_configure('underline', font=font_underline)
 
         self.text.tag_configure('text_input', background='Black', foreground='White')
+        self.text.tag_configure('text_input_active', background='DarkBlue', foreground='White')
 
         self.text.pack(fill='both', expand=True)
         self.text['state'] = tkinter.DISABLED
@@ -133,11 +134,11 @@ class TextApplication(tkinter.Tk):
         self.displaynavigation.update_search_text()
 
     def blink_input_cursor1(self):
-        self.text.tag_configure('text_input_cursor', background='Black', foreground='White')
-        self.input_text.tag_configure('text_input_cursor', background='Black', foreground='White')
+        self.text.tag_configure('text_input_cursor', background='DarkBlue', foreground='White')
+        self.input_text.tag_configure('text_input_cursor', background='DarkBlue', foreground='White')
         self.after(200, self.blink_input_cursor2)
 
     def blink_input_cursor2(self):
-        self.text.tag_configure('text_input_cursor', background='White', foreground='Black')
-        self.input_text.tag_configure('text_input_cursor', background='White', foreground='Black')
+        self.text.tag_configure('text_input_cursor', background='White', foreground='DarkBlue')
+        self.input_text.tag_configure('text_input_cursor', background='White', foreground='DarkBlue')
         self.after(200, self.blink_input_cursor1)

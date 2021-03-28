@@ -142,6 +142,9 @@ class KeyInputHandler(BaseInputHandler):
 
 
 class TypingInputHandler(KeyInputHandler):
+
+    text_tag = 'text_input_active'
+
     def __init__(self, displaynavigation, displayhandler, length=20, text=""):
         super().__init__(displaynavigation, displayhandler)
         self.search_string = text
@@ -207,11 +210,11 @@ class TypingInputHandler(KeyInputHandler):
     def display(self, text):
         s = "{{:{}}}".format(str(self.length)).format(self.search_string)
         if self.cursor_pos < self.length:
-            text.insert(tkinter.END, s[:self.cursor_pos], 'text_input')
+            text.insert(tkinter.END, s[:self.cursor_pos], self.text_tag)
             text.insert(tkinter.END, s[self.cursor_pos], 'text_input_cursor')
-            text.insert(tkinter.END, s[self.cursor_pos+1:], 'text_input')
+            text.insert(tkinter.END, s[self.cursor_pos+1:], self.text_tag)
         else:
-            text.insert(tkinter.END, s[:self.cursor_pos-1], 'text_input')
+            text.insert(tkinter.END, s[:self.cursor_pos-1], self.text_tag)
             text.insert(tkinter.END, s[self.cursor_pos-1], 'text_input_cursor')
 
     def update_search_text(self):

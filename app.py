@@ -9,6 +9,7 @@ import traceback
 import subprocess
 from navigation import *
 from input import *
+from inputgroup import *
 from display import *
 from gui import TextApplication
 from lookup_barcode import lookup_item_online
@@ -128,7 +129,6 @@ class SearchStock(DisplayHandler):
 
 
 class DisplayStockItem(DisplayHandler):
-    # TODO: Edit stock item with multiple input fields
     def __init__(self, root, stockitem):
         super().__init__(root)
         self.stockitem = stockitem
@@ -151,6 +151,13 @@ class DisplayStockItem(DisplayHandler):
         for levelchange in levelchanges:
             self.text.insert(tkinter.END, f"  {levelchange.date} {levelchange.change}\n")
 
+    def text_search(self, s):
+        s = s.strip()
+        if s.lower() == 'e':
+            self.navigate(NewStockItem, self.stockitem)
+            return
+        super().text_search(s)
+
 
 class NewStockItem(DisplayHandler):
     def __init__(self, root, stockitem):
@@ -158,10 +165,17 @@ class NewStockItem(DisplayHandler):
         self.stockitem = stockitem
         self.step = 1
 
-    key_input_handler_class = TypingInputHandler
+    key_input_handler_class = InputGroup
 
     def create_input_handler(self):
-        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 100, self.stockitem.name)
+        self.input_handler = self.key_input_handler_class(self.displaynavigation, self)
+        self.name_input = self.input_handler.add(FocusableTypingInputHandler(self.displaynavigation, self, 100, self.stockitem.name))
+        self.brand_input = self.input_handler.add(FocusableTypingInputHandler(self.displaynavigation, self, 100, self.stockitem.brand))
+
+    def run_exit(self):
+        self.stockitem.name = self.name_input.search_string
+        self.stockitem.brand = self.brand_input.search_string
+        self.stockitem.save()
 
     def display_contents(self):
         self.text.insert(tkinter.END, "New Item Details\n")
@@ -172,15 +186,11 @@ class NewStockItem(DisplayHandler):
         self.text.insert(tkinter.END, "\n")
         self.text.insert(tkinter.END, f"Barcode: {self.stockitem.barcode}\n")
         self.text.insert(tkinter.END, f"Name:    ")
-        self.input_handler.display(self.text)
+        self.name_input.display(self.text)
         self.text.insert(tkinter.END, f"\n")
-        self.text.insert(tkinter.END, f"Brand:   {self.stockitem.brand}\n")
-
-    def text_search(self, s):
-        if self.step == 1:
-            self.stockitem.name = s.strip()
-            self.stockitem.save()
-            self.navigate_back()
+        self.text.insert(tkinter.END, f"Brand:   ")
+        self.brand_input.display(self.text)
+        self.text.insert(tkinter.END, f"\n")
 
 
 class LookupNewStockItem(DisplayHandler):
