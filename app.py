@@ -303,9 +303,9 @@ class PrintShoppingList(DisplayHandler):
             levelchanges = list(item.levelchange_set.all().order_by('date'))
             levelchanges_pos = [c for c in levelchanges if c.change > 0]
             levelchanges_neg = [c for c in levelchanges if c.change < 0]
-            if len(levelchanges_pos) == 0 or len(levelchanges_neg) == 0:
+            if len(levelchanges_neg) == 0:
                 continue
-            levelchanges_neg_recent = [c for c in levelchanges_neg if c.date > levelchanges_pos[-1].date]
+            levelchanges_neg_recent = [c for c in levelchanges_neg if len(levelchanges_pos) == 0 or c.date > levelchanges_pos[-1].date]
             if len(levelchanges_neg_recent) == 0:
                 continue
             self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
