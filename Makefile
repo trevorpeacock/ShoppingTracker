@@ -8,7 +8,7 @@ run_test: venv
 	bash -c ". venv/bin/activate && python test.py"
 
 run: venv
-	bash -c ". venv/bin/activate && python gui.py"
+	bash -c ". venv/bin/activate && python app.py"
 
 clean:
 	rm -dfr venv

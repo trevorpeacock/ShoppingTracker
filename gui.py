@@ -1,12 +1,10 @@
-import db_setup
-import db.models
 import tkinter
 import tkinter.font
 import os
-import datetime
-import decimal
 import traceback
-import subprocess
+from navigation import *
+from input import *
+from display import *
 
 
 def click_text(event, tag):
@@ -32,648 +30,34 @@ def hide_hand_cursor(a):
     a.widget.config(cursor='')
 
 
-class DisplayNavigationManager(object):
-    # TODO: Auto timeout, return to home
-    def __init__(self, root):
-        super().__init__()
-        self.root = root
-        self.display_text = root.text
-        self.input_text = root.input_text
-        self.nav_history = []
+class TextApplication(tkinter.Tk):
+
+    window_title = "Untitled"
+    icon_file = None
+    default_display = None
+
+    def link_click_handler(self, name, event):
+        text = click_text(event, name)[2].strip()
+        self.link_handlers[name](text)
+
+    def configure_link(self, name, handler, **styles):
+        self.text.tag_configure(name, **styles)
+        self.text.tag_bind(name, "<Enter>", show_hand_cursor)
+        self.text.tag_bind(name, "<Leave>", hide_hand_cursor)
+        self.link_handlers[name] = handler
+        self.text.tag_bind(name, '<1>', lambda event: self.open_stockitem(name, event))
 
-    def update_search_text(self):
-        self.nav_history[-1].update_search_text()
-
-    def clipboard_search(self, clipboard):
-        self.nav_history[-1].clipboard_search(clipboard)
-
-    def exit_all(self):
-        while len(self.nav_history)>1:
-            self.nav_history[-1].run_exit()
-            self.nav_history.pop()
-            self.nav_history[-1].run_return()
-        self.nav_history[0].run_exit()
-
-    def _navigate(self, cls, *k, **kk):
-        obj = cls(self, *k, **kk)
-        self.nav_history.append(obj)
-        obj.run_new()
-
-    def navigate(self, cls, *k, **kk):
-        if self.nav_history:
-            self.nav_history[-1].run_leave()
-        self._navigate(cls, *k, **kk)
-
-    def navigate_replace(self, cls, *k, **kk):
-        self.nav_history[-1].run_exit()
-        self.nav_history.pop()
-        self._navigate(cls, *k, **kk)
-
-    def navigate_back(self):
-        if len(self.nav_history) <= 1:
-            return
-        self.nav_history[-1].run_exit()
-        self.nav_history.pop()
-        nav = self.nav_history[-1]
-        nav.run_return()
-
-    def char_press(self, e):
-        self.nav_history[-1].char_press(e)
-
-
-class BaseInputHandler(object):
-    # TODO: Automatically detect barcode scanner input (fast input) and handle separately
-    def __init__(self, displaynavigation, displayhandler):
-        super().__init__()
-        self.displaynavigation = displaynavigation
-        self.input_text = displaynavigation.input_text
-        self.displayhandler = displayhandler
-
-    def navigate(self, cls, *k, **kk):
-        self.displaynavigation.navigate(cls, *k, **kk)
-
-    def navigate_replace(self, cls, *k, **kk):
-        self.displaynavigation.navigate_replace(cls, *k, **kk)
-
-    def navigate_back(self):
-        self.displaynavigation.navigate_back()
-
-    def update_search_text(self):
-        self.input_text['state'] = tkinter.NORMAL
-        self.input_text.delete('1.0', tkinter.END)
-        self.display_search_text()
-        self.input_text['state'] = tkinter.DISABLED
-
-    def display_search_text(self):
-        pass
-
-    def char_press_up(self):
-        self.displayhandler.char_press_up()
-
-    def char_press_down(self):
-        self.displayhandler.char_press_down()
-
-    def char_press_left(self):
-        self.displayhandler.char_press_left()
-
-    def char_press_right(self):
-        self.displayhandler.char_press_right()
-
-    def char_press_pgup(self):
-        self.displayhandler.char_press_pgup()
-
-    def char_press_pgdown(self):
-        self.displayhandler.char_press_pgdown()
-
-    def char_press_home(self):
-        pass
-
-    def char_press_end(self):
-        pass
-
-    def char_press_backspace(self):
-        pass
-
-    def char_press_escape(self):
-        self.navigate_back()
-
-    def char_press_enter(self):
-        pass
-
-    def char_press_text(self, c):
-        pass
-
-    def keypress(self, e):
-        if e.state & 0x0001: # Shift
-            pass
-        if e.state & 0x0002: # Caps Lock
-            pass
-        if e.state & 0x0004: # Control
-            if e.keysym == 'v':
-                #self.update_search_string(self.root.search_string + self.root.clipboard_get())
-                return
-            if e.keysym == 'c':
-                #self.root.clipboard_clear()
-                #self.root.clipboard_append(self.text.selection_get())
-                #self.root.text.selection_clear()
-                return
-            return
-        if e.state & 0x0008: # Left Alt
-            return
-        if e.state & 0x0010: # Numlock
-            pass
-        if e.state & 0x0080: # Right Alt
-            return
-        if e.state & 0x0100: # Mouse 1
-            return
-        if e.state & 0x0200: # Mouse 2
-            return
-        if e.state & 0x0400: # Mouse 3
-            return
-
-        if e.keysym == 'Up':
-            self.char_press_up()
-            return
-        if e.keysym == 'Down':
-            self.char_press_down()
-            return
-        if e.keysym == 'Left':
-            self.char_press_left()
-            return
-        if e.keysym == 'Right':
-            self.char_press_right()
-            return
-        if e.keysym == 'Prior':
-            self.char_press_pgup()
-            return
-        if e.keysym == 'Next':
-            self.char_press_pgdown()
-            return
-        if e.keysym == 'Home':
-            self.char_press_home()
-            return
-        if e.keysym == 'End':
-            self.char_press_end()
-            return
-
-        if e.keycode == 22: # backspace
-            self.char_press_backspace()
-            return
-        if e.keycode == 9: # escape
-            self.char_press_escape()
-            return
-        if e.char == '\r':
-            self.char_press_enter()
-            return
-
-        if e.char != '':
-            self.char_press_text(e.char)
-            return
-        print(e)
-
-
-class KeyInputHandler(BaseInputHandler):
-    def char_press_text(self, c):
-        self.displayhandler.text_search(c)
-
-    def display_search_text(self):
-        self.input_text.insert(tkinter.END, "COMMAND > ")
-        self.input_text.insert(tkinter.END, " ", 'text_input_cursor')
-
-
-class TypingInputHandler(KeyInputHandler):
-    def __init__(self, displaynavigation, displayhandler, length=20):
-        super().__init__(displaynavigation, displayhandler)
-        self.search_string = ''
-        self.cursor_pos = 0
-        self.length = length
-
-    def update_search_string(self, s=None):
-        # We don't want to slow down key handling during barcode scanning
-        # If an update is required, set a timer and handle it later to allow more input
-        self.displaynavigation.root.trigger_search_update_timer()
-        if s is not None:
-            self.search_string = s
-
-    def display_search_text(self):
-        self.input_text.insert(tkinter.END, "INPUT > " + self.search_string)
-        self.input_text.insert(tkinter.END, " ", 'text_input_cursor')
-
-    def char_press_left(self):
-        self.cursor_pos += -1
-        if self.cursor_pos < 0:
-            self.cursor_pos = 0
-        self.update_search_string()
-
-    def char_press_right(self):
-        self.cursor_pos += 1
-        if self.cursor_pos > len(self.search_string):
-            self.cursor_pos = len(self.search_string)
-        self.update_search_string()
-
-    def char_press_home(self):
-        self.cursor_pos = 0
-        self.update_search_string()
-
-    def char_press_end(self):
-        self.cursor_pos = len(self.search_string)
-        self.update_search_string()
-
-    def char_press_backspace(self):
-        self.update_search_string(self.search_string[:self.cursor_pos-1] + self.search_string[self.cursor_pos:])
-        self.char_press_left()
-
-    def char_press_escape(self):
-        if self.search_string != '':
-            self.update_search_string('')
-            self.cursor_pos = 0
-        else:
-            super().char_press_escape()
-
-    def char_press_enter(self):
-        self.displayhandler.text_search(self.search_string)
-        self.update_search_string('')
-
-    def char_press_text(self, c):
-        if self.cursor_pos != self.length:
-            if len(self.search_string) == self.length:
-                return
-            self.search_string = self.search_string[:self.cursor_pos] + c + self.search_string[self.cursor_pos:]
-        else:
-            self.search_string = self.search_string[:self.cursor_pos-1] + c
-        self.search_string = self.search_string[:self.length]
-        self.char_press_right()
-
-    def display(self, text):
-        s = "{{:{}}}".format(str(self.length)).format(self.search_string)
-        if self.cursor_pos < self.length:
-            text.insert(tkinter.END, s[:self.cursor_pos], 'text_input')
-            text.insert(tkinter.END, s[self.cursor_pos], 'text_input_cursor')
-            text.insert(tkinter.END, s[self.cursor_pos+1:], 'text_input')
-        else:
-            text.insert(tkinter.END, s[:self.cursor_pos-1], 'text_input')
-            text.insert(tkinter.END, s[self.cursor_pos-1], 'text_input_cursor')
-
-    def update_search_text(self):
-        super().update_search_text()
-        self.displayhandler.display()
-
-
-class DisplayHandlerBase(object):
-    def __init__(self, displaynavigation):
-        super().__init__()
-        self.displaynavigation = displaynavigation
-        self.text = displaynavigation.display_text
-        self.input_handler = None
-
-    key_input_handler_class = KeyInputHandler
-
-    def create_input_handler(self):
-        self.input_handler = self.key_input_handler_class(self.displaynavigation, self)
-
-    def run_leave(self):
-        pass
-
-    def run_return(self):
-        self.display()
-        self.input_handler.update_search_text()
-
-    def run_new(self):
-        self.create_input_handler()
-        self.input_handler.update_search_text()
-        self.display()
-
-    def run_exit(self):
-        pass
-
-    def navigate(self, cls, *k, **kk):
-        self.displaynavigation.navigate(cls, *k, **kk)
-
-    def navigate_replace(self, cls, *k, **kk):
-        self.displaynavigation.navigate_replace(cls, *k, **kk)
-
-    def navigate_back(self):
-        self.displaynavigation.navigate_back()
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "Not implemented!")
-
-    def display(self):
-        self.text['state'] = tkinter.NORMAL
-        self.text.delete('1.0', tkinter.END)
-        self.display_contents()
-        self.text['state'] = tkinter.DISABLED
-
-    def text_search(self, s):
-        raise NotImplementedError("Not Implemented")
-
-    def char_press_up(self):
-        self.text.yview_scroll(-1, 'units')
-
-    def char_press_down(self):
-        self.text.yview_scroll(1, 'units')
-
-    def char_press_left(self):
-        self.text.xview_scroll(-1, 'page')
-
-    def char_press_right(self):
-        self.text.xview_scroll(1, 'page')
-
-    def char_press_pgup(self):
-        self.text.yview_scroll(-1, 'page')
-
-    def char_press_pgdown(self):
-        self.text.yview_scroll(1, 'page')
-
-    def char_press(self, e):
-        self.input_handler.keypress(e)
-
-    def clipboard_search(self, clipboard):
-        pass#self.text_search(clipboard)
-
-    def update_search_text(self):
-        self.input_handler.update_search_text()
-
-class DisplayHandler(DisplayHandlerBase):
-    def text_search(self, s):
-        s = s.strip()
-        if s.lower() == 'q':
-            self.navigate(Quit)
-            return
-
-class Home(DisplayHandler):
-    def display_contents(self):
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Commands\n")
-        self.text.insert(tkinter.END, "========\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "  Type a command and then press enter\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "      a  - Scan items to add to inventory\n")
-        self.text.insert(tkinter.END, "      s  - Search inventory\n")
-        self.text.insert(tkinter.END, "      l  - List inventory\n")
-        self.text.insert(tkinter.END, "      p  - Print shopping list\n")
-        self.text.insert(tkinter.END, "     < > - Scan item to use\n")
-        self.text.insert(tkinter.END, "      q  - Quit\n")
-
-    def text_search(self, s):
-        s = s.strip()
-        if s.lower() == 'a':
-            self.navigate(AddStock)
-            return
-        if s.lower() == 's':
-            self.navigate(SearchStock)
-            return
-        if s.lower() == 'l':
-            self.navigate(ListStock)
-            return
-        if s.lower() == 'p':
-            self.navigate(PrintShoppingList)
-            return
-        if s.lower() == 'q':
-            self.navigate(Quit)
-            return
-        try:
-            stockitem = db.models.StockItem.objects.get(barcode=s.lower())
-            change = db.models.LevelChange()
-            change.item = stockitem
-            change.change = -1
-            change.save()
-        except db.models.StockItem.DoesNotExist:
-            subprocess.call(['play', 'bell.wav'])
-        super().text_search(s)
-
-
-class Quit(DisplayHandler):
-    def display_contents(self):
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Are you sure you want to quit?\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Press y or n then enter.\n")
-
-    def text_search(self, s):
-        s = s.strip()
-        if s.lower() == 'y':
-            self.displaynavigation.root.on_closing()
-            return
-        if s.lower() == 'n':
-            self.navigate_back()
-            return
-
-
-class ListStock(DisplayHandler):
-    def __init__(self, root):
-        super().__init__(root)
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "Pantry List\n")
-        self.text.insert(tkinter.END, "===========\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Press ESC to go back or click on an item to view details\n")
-        self.text.insert(tkinter.END, "\n")
-        for item in db.models.StockItem.objects.all():
-            self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
-            self.text.insert(tkinter.END, "  ")
-            self.text.insert(tkinter.END, "{:3}".format(sum([c.change for c in item.levelchange_set.all()])))
-            self.text.insert(tkinter.END, " x  ")
-            self.text.insert(tkinter.END, item)
-            self.text.insert(tkinter.END, "\n")
-
-
-class SearchStockResults(DisplayHandler):
-    def __init__(self, root, string):
-        super().__init__(root)
-        self.string = string
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, f"Search Results\n")
-        self.text.insert(tkinter.END, f"==============\n")
-        self.text.insert(tkinter.END, f"\n")
-        self.text.insert(tkinter.END, f"Press ESC to go back to menu. Click on an item to view details\n")
-        self.text.insert(tkinter.END, f"\n")
-        self.text.insert(tkinter.END, f"  Query: {self.string}\n")
-        self.text.insert(tkinter.END, f"\n")
-        self.text.insert(tkinter.END, f"  Results:\n")
-        for item in db.models.StockItem.objects.all():
-            if self.string.lower() in item.name.lower():
-                self.text.insert(tkinter.END, "  ")
-                self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
-                self.text.insert(tkinter.END, "  ")
-                self.text.insert(tkinter.END, item)
-                self.text.insert(tkinter.END, "\n")
-
-
-class SearchStock(DisplayHandler):
-    def __init__(self, root):
-        super().__init__(root)
-
-    key_input_handler_class = TypingInputHandler
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "Type something to search, and press enter, or scan an item.\n")
-        self.text.insert(tkinter.END, "Press ESC to cancel.\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Search: ")
-        self.input_handler.display(self.text)
-        self.text.insert(tkinter.END, "\n")
-
-    def text_search(self, s):
-        try:
-            stockitem = db.models.StockItem.objects.get(barcode=s.lower())
-            self.navigate_replace(DisplayStockItem, stockitem)
-            return
-        except db.models.StockItem.DoesNotExist:
-            pass
-        if s.strip() == '':
-            return
-        self.navigate_replace(SearchStockResults, s.strip().lower())
-        return
-
-
-class DisplayStockItem(DisplayHandler):
-    # TODO: Edit stock item with multiple input fields
-    def __init__(self, root, stockitem):
-        super().__init__(root)
-        self.stockitem = stockitem
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "Item Detail\n")
-        self.text.insert(tkinter.END, "===========\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Press ESC to go back.\n")
-        self.text.insert(tkinter.END, "\n")
-        levelchanges = self.stockitem.levelchange_set.all().order_by('date')
-        self.text.insert(tkinter.END, f"Barcode:  {self.stockitem.barcode}\n")
-        self.text.insert(tkinter.END, f"Name:     {self.stockitem.name}\n")
-        self.text.insert(tkinter.END, f"Brand:    {self.stockitem.brand}\n")
-        quantity = sum([c.change for c in levelchanges])
-        self.text.insert(tkinter.END, f"Quantity: {quantity}\n")
-#        self.text.insert(tkinter.END, f"Category: {self.stockitem.category}\n")
-        self.text.insert(tkinter.END, f"Notes:    {self.stockitem.notes}\n")
-        self.text.insert(tkinter.END, "\n")
-        for levelchange in levelchanges:
-            self.text.insert(tkinter.END, f"  {levelchange.date} {levelchange.change}\n")
-
-
-class NewStockItem(DisplayHandler):
-    def __init__(self, root, stockitem):
-        super().__init__(root)
-        self.stockitem = stockitem
-        self.step = 1
-
-    key_input_handler_class = TypingInputHandler
-
-    def create_input_handler(self):
-        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 100)
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "New Item Details\n")
-        self.text.insert(tkinter.END, "================\n")
-        self.text.insert(tkinter.END, "\n")
-        if self.step == 1:
-            self.text.insert(tkinter.END, "Enter name of new item\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, f"Barcode: {self.stockitem.barcode}\n")
-        self.text.insert(tkinter.END, f"Name:    ")
-        self.input_handler.display(self.text)
-        self.text.insert(tkinter.END, f"\n")
-
-    def text_search(self, s):
-        if self.step == 1:
-            self.stockitem.name = s.strip()
-            self.stockitem.save()
-            self.navigate_back()
-
-
-class AddStock(DisplayHandler):
-    def __init__(self, root):
-        super().__init__(root)
-        self.list = {}
-        self.newitem = None
-
-    key_input_handler_class = TypingInputHandler
-
-    def create_input_handler(self):
-        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, 50)
-
-    def add_item(self, stockitem):
-        if stockitem in self.list:
-            self.list[stockitem] += 1
-        else:
-            self.list[stockitem] = 1
-
-    def run_return(self):
-        if self.newitem.id:
-            self.add_item(self.newitem)
-        else:
-            self.newitem = None
-        super().run_return()
-
-    def run_exit(self):
-        for item, quantity in self.list.items():
-            change = db.models.LevelChange()
-            change.item = item
-            change.change = quantity
-            change.save()
-        super().run_exit()
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "Add Items to Pantry\n")
-        self.text.insert(tkinter.END, "===================\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Scan items to add. Press ESC when done.\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Items:\n")
-        self.text.insert(tkinter.END, "\n")
-        for item, quantity in self.list.items():
-            self.text.insert(tkinter.END, f"{quantity} x {item}\n")
-
-    def text_search(self, s):
-        s = s.strip()
-        if s.lower() == 'q':
-            self.navigate_back()
-            return
-        try:
-            stockitem = db.models.StockItem.objects.get(barcode=s.lower())
-            self.add_item(stockitem)
-            self.display()
-        except db.models.StockItem.DoesNotExist:
-            stockitem = db.models.StockItem()
-            stockitem.barcode = s.lower()
-            subprocess.call(['play', 'bell.wav'])
-            self.newitem = stockitem
-            self.navigate(NewStockItem, stockitem)
-
-
-class PrintShoppingList(DisplayHandler):
-    def __init__(self, root):
-        super().__init__(root)
-
-    def display_contents(self):
-        self.text.insert(tkinter.END, "Shopping List\n")
-        self.text.insert(tkinter.END, "=============\n")
-        self.text.insert(tkinter.END, "\n")
-        self.text.insert(tkinter.END, "Type p then enter to print. Press ESC to go back.\n")
-        self.text.insert(tkinter.END, "\n")
-        for item in db.models.StockItem.objects.all():
-            levelchanges = list(item.levelchange_set.all().order_by('date'))
-            levelchanges_pos = [c for c in levelchanges if c.change > 0]
-            levelchanges_neg = [c for c in levelchanges if c.change < 0]
-            if len(levelchanges_pos) == 0 or len(levelchanges_neg) == 0:
-                continue
-            levelchanges_neg_recent = [c for c in levelchanges_neg if c.date > levelchanges_pos[-1].date]
-            if len(levelchanges_neg_recent) == 0:
-                continue
-            self.text.insert(tkinter.END, "{:10}".format(item.barcode), 'stockitem')
-            self.text.insert(tkinter.END, "  ")
-            self.text.insert(tkinter.END, "{:3}".format(-sum([c.change for c in levelchanges_neg_recent])))
-            self.text.insert(tkinter.END, " x  ")
-            self.text.insert(tkinter.END, item)
-            self.text.insert(tkinter.END, " (")
-            self.text.insert(tkinter.END, sum([c.change for c in levelchanges]))
-            self.text.insert(tkinter.END, ")")
-            self.text.insert(tkinter.END, "\n")
-
-    def text_search(self, s):
-        s = s.strip()
-        if s.lower() == 'p':
-            subprocess.Popen(['lpr'], stdin=subprocess.PIPE).communicate(self.text.get("1.0", tkinter.END).encode('ascii'))
-            return
-        super().text_search(s)
-
-class Root(tkinter.Tk):
 
     def __init__(self):
         super().__init__()
 
-        #self.search_string = ''
         self.search_update_timer_set = False
         self.last_clipboard_contents = ''
+        self.link_handlers = {}
 
-        self.title("Parts DB")
-        self.iconphoto(False, tkinter.PhotoImage(file='icon.png'))
+        self.title(self.window_title)
+        if self.icon_file:
+            self.iconphoto(False, tkinter.PhotoImage(file=self.icon_file))
         self.minsize(700, 500)
         if os.path.exists('window'):
             with open('window') as w:
@@ -693,16 +77,10 @@ class Root(tkinter.Tk):
 
         self.text.tag_configure('underline', font=font_underline)
 
-        self.text.tag_configure('stockitem', font=font_bold)
-        self.text.tag_bind("stockitem", "<Enter>", show_hand_cursor)
-        self.text.tag_bind("stockitem", "<Leave>", hide_hand_cursor)
-        self.text.tag_bind('stockitem', '<1>', self.open_stockitem)
-
         self.text.tag_configure('text_input', background='Black', foreground='White')
 
         self.text.pack(fill='both', expand=True)
         self.text['state'] = tkinter.DISABLED
-
 
         self.input_text = tkinter.Text(self, wrap='none', height=1, bg='Black', fg='White')
         self.input_text.configure(font=font)
@@ -718,7 +96,8 @@ class Root(tkinter.Tk):
         self.bind("<KeyPress>", self.char_press)
 
         self.displaynavigation = DisplayNavigationManager(self)
-        self.displaynavigation.navigate(Home)
+        if self.default_display:
+            self.displaynavigation.navigate(self.default_display)
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.bind("<FocusIn>", self.handle_focus)
@@ -740,7 +119,9 @@ class Root(tkinter.Tk):
 
     def show_error(self, *args):
         err = traceback.format_exception(*args)
-        print(''.join(err))
+        err = ''.join(err)
+        print(err)
+        self.displaynavigation.navigate(DisplayError, err)
 
     def trigger_search_update_timer(self):
         if not self.search_update_timer_set:
@@ -751,11 +132,6 @@ class Root(tkinter.Tk):
         self.search_update_timer_set = False
         self.displaynavigation.update_search_text()
 
-    def open_stockitem(self, k):
-        stockitem = click_text(k, 'stockitem')[2].strip()
-        stockitem = db.models.StockItem.objects.get(barcode=stockitem)
-        self.displaynavigation.navigate(DisplayStockItem, stockitem)
-
     def blink_input_cursor1(self):
         self.text.tag_configure('text_input_cursor', background='Black', foreground='White')
         self.input_text.tag_configure('text_input_cursor', background='Black', foreground='White')
@@ -765,31 +141,3 @@ class Root(tkinter.Tk):
         self.text.tag_configure('text_input_cursor', background='White', foreground='Black')
         self.input_text.tag_configure('text_input_cursor', background='White', foreground='Black')
         self.after(200, self.blink_input_cursor1)
-
-    """
-
-    def open_location(self, k):
-        self.navigate(LocationItem, tuple(click_text(k, 'location')[2].split(' > ')))
-
-    def open_invoice(self, k):
-        self.navigate(InvoiceHandler, click_text(k, 'invoiceno')[2])
-
-    def open_part(self, k):
-        pn = click_text(k, 'part')[2].replace(' ', '')
-        index = db.StockPartList.init().indexes['Internal PN']
-        self.navigate(PartHandler, index[pn])
-
-    def open_supplierpart(self, k):
-        pn = tuple(click_text(k, 'supplierpart')[2].split(':', 1))
-        index = db.SupplierPartList.init().indexes['OrderCode']
-        self.navigate(PartHandler, index[pn])
-
-    def open_manufacturerpart(self, k):
-        pn = tuple(click_text(k, 'manufacturerpart')[2].split(':', 1))
-        index = db.StockPartList.init().indexes['MPN']
-        self.navigate(PartHandler, index[pn])
-"""
-
-
-if __name__ == "__main__":
-    Root().mainloop()
