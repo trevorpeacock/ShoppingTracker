@@ -45,7 +45,7 @@ class TextApplication(tkinter.Tk):
         self.text.tag_bind(name, "<Enter>", show_hand_cursor)
         self.text.tag_bind(name, "<Leave>", hide_hand_cursor)
         self.link_handlers[name] = handler
-        self.text.tag_bind(name, '<1>', lambda event: self.open_stockitem(name, event))
+        self.text.tag_bind(name, '<1>', lambda event: self.link_click_handler(name, event))
 
 
     def __init__(self):
@@ -121,7 +121,7 @@ class TextApplication(tkinter.Tk):
         err = traceback.format_exception(*args)
         err = ''.join(err)
         print(err)
-        self.displaynavigation.navigate(DisplayError, err)
+        self.displaynavigation.navigate_replace(DisplayError, err)
 
     def trigger_search_update_timer(self):
         if not self.search_update_timer_set:
