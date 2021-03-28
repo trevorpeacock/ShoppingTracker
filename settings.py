@@ -3,6 +3,10 @@ DATA_PATH = './data/'
 # API Key from eandata.com
 EANDATA_KEY = ''
 
+# API Key from digit-eyes.com
+DIGITEYES_AUTH_KEY = ''
+DIGITEYES_APP_KEY = ''
+
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
