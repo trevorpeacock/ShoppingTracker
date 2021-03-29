@@ -1,8 +1,8 @@
 import tkinter
+import datetime
 
 
 class BaseInputHandler(object):
-    # TODO: Automatically detect barcode scanner input (fast input) and handle separately
     def __init__(self, displaynavigation, displayhandler):
         super().__init__()
         self.displaynavigation = displaynavigation
@@ -58,6 +58,9 @@ class BaseInputHandler(object):
         self.navigate_back()
 
     def char_press_enter(self):
+        pass
+
+    def char_press_tab(self):
         pass
 
     def char_press_text(self, c):
@@ -125,6 +128,9 @@ class BaseInputHandler(object):
         if e.char == '\r':
             self.char_press_enter()
             return
+        if e.char == '\t':
+            self.char_press_tab()
+            return
 
         if e.char != '':
             self.char_press_text(e.char)
@@ -132,7 +138,49 @@ class BaseInputHandler(object):
         print(e)
 
 
-class KeyInputHandler(BaseInputHandler):
+class BarcodeDetectionInputHandler(BaseInputHandler):
+
+    barcode_char_max_interval = 10 # Milliseconds
+    barcode_min_length = 8
+
+    def __init__(self, displaynavigation, displayhandler):
+        super().__init__(displaynavigation, displayhandler)
+        self.keypress_queue = []
+        self.keypress_queue_end = datetime.datetime.now()
+
+    def process_keypress_queue(self):
+        if len(self.keypress_queue) == 0:
+            return
+        # character is not a normal character (including enter and tab)
+        if [e for e in self.keypress_queue if len(repr(e.char)) != 3 and e.char not in ['\t', '\r']]:
+            #print('non barcode, dumping queue')
+            while self.keypress_queue:
+                super().keypress(self.keypress_queue.pop(0))
+        if datetime.datetime.now() - self.keypress_queue_end < datetime.timedelta(milliseconds=self.barcode_char_max_interval):
+            self.displaynavigation.root.after(self.barcode_char_max_interval, self.process_keypress_queue)
+            return
+        if len(self.keypress_queue) >= self.barcode_min_length and self.keypress_queue[-1].char in ['\t', '\r']:
+            #print('BARCODE!')
+            barcode = ''
+            while self.keypress_queue:
+                barcode += self.keypress_queue.pop(0).char
+            self.process_barcode(barcode.strip())
+        else:
+            #print('too short, dumping queue')
+            #print([e.char for e in self.keypress_queue])
+            while self.keypress_queue:
+                super().keypress(self.keypress_queue.pop(0))
+
+    def process_barcode(self, barcode):
+        self.displayhandler.process_barcode(barcode)
+
+    def keypress(self, e):
+        self.keypress_queue.append(e)
+        self.keypress_queue_end = datetime.datetime.now()
+        self.displaynavigation.root.after(10, self.process_keypress_queue)
+
+
+class KeyInputHandler(BarcodeDetectionInputHandler):
     def char_press_text(self, c):
         self.displayhandler.text_search(c)
 

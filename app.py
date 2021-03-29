@@ -31,6 +31,18 @@ class Home(DisplayHandler):
         self.text.insert(tkinter.END, "     < > - Scan item to use\n")
         self.text.insert(tkinter.END, "      q  - Quit\n")
 
+    def process_barcode(self, barcode):
+        #print("Barcode", barcode)
+        try:
+            stockitem = db.models.StockItem.objects.get(barcode=barcode.lower())
+            change = db.models.LevelChange()
+            change.item = stockitem
+            change.change = -1
+            change.save()
+        except db.models.StockItem.DoesNotExist:
+            subprocess.call(['play', 'bell.wav'])
+
+
     def text_search(self, s):
         s = s.strip()
         if s.lower() == 'a':
@@ -48,14 +60,6 @@ class Home(DisplayHandler):
         if s.lower() == 'q':
             self.navigate(Quit)
             return
-        try:
-            stockitem = db.models.StockItem.objects.get(barcode=s.lower())
-            change = db.models.LevelChange()
-            change.item = stockitem
-            change.change = -1
-            change.save()
-        except db.models.StockItem.DoesNotExist:
-            subprocess.call(['play', 'bell.wav'])
         super().text_search(s)
 
 

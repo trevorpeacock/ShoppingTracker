@@ -50,6 +50,9 @@ class DisplayHandlerBase(object):
     def text_search(self, s):
         raise NotImplementedError("Not Implemented")
 
+    def process_barcode(self, barcode):
+        self.text_search(barcode)
+
     def char_press_up(self):
         self.text.yview_scroll(-1, 'units')
 
