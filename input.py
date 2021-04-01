@@ -268,3 +268,49 @@ class TypingInputHandler(KeyInputHandler):
     def update_search_text(self):
         super().update_search_text()
         self.displayhandler.display()
+
+
+class SelectionInputHandler(KeyInputHandler):
+
+    text_tag = 'text_input'
+
+    def __init__(self, displaynavigation, displayhandler, length):
+        super().__init__(displaynavigation, displayhandler)
+        self.cursor_pos = 0
+        self.length = length
+
+    def update_search_string(self, s=None):
+        # We don't want to slow down key handling during barcode scanning
+        # If an update is required, set a timer and handle it later to allow more input
+        self.displaynavigation.root.trigger_search_update_timer()
+
+    def display_search_text(self):
+        self.input_text.insert(tkinter.END, "SELECT {} / {}".format(self.cursor_pos + 1, self.length))
+
+    def char_press_up(self):
+        self.cursor_pos += -1
+        if self.cursor_pos < 0:
+            self.cursor_pos = self.length - 1
+        self.update_search_string()
+
+    def char_press_down(self):
+        self.cursor_pos += 1
+        if self.cursor_pos >= self.length:
+            self.cursor_pos = 0
+        self.update_search_string()
+
+    def char_press_home(self):
+        self.cursor_pos = 0
+        self.update_search_string()
+
+    def char_press_end(self):
+        self.cursor_pos = self.length - 1
+        self.update_search_string()
+
+    def char_press_enter(self):
+        self.displayhandler.text_search(str(self.cursor_pos))
+        #self.update_search_string('')
+
+    def update_search_text(self):
+        super().update_search_text()
+        self.displayhandler.display()

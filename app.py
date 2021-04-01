@@ -66,6 +66,12 @@ class Home(DisplayHandler):
 class ListStock(DisplayHandler):
     def __init__(self, root):
         super().__init__(root)
+        self.list = list(db.models.StockItem.objects.all())
+
+    key_input_handler_class = SelectionInputHandler
+
+    def create_input_handler(self):
+        self.input_handler = self.key_input_handler_class(self.displaynavigation, self, len(self.list))
 
     def display_contents(self):
         self.text.insert(tkinter.END, "Pantry List\n")
@@ -73,14 +79,23 @@ class ListStock(DisplayHandler):
         self.text.insert(tkinter.END, "\n")
         self.text.insert(tkinter.END, "Press ESC to go back or click on an item to view details\n")
         self.text.insert(tkinter.END, "\n")
-        for item in db.models.StockItem.objects.all():
-            self.text.insert(tkinter.END, "{:14}".format(item.barcode), 'stockitem')
+        for pos, item in enumerate(self.list):
+            self.text.insert(tkinter.END, "   ")
+            if self.input_handler.cursor_pos == pos:
+                self.text.insert(tkinter.END, "{:14}".format(item.barcode), ['stockitem', 'text_input'])
+            else:
+                self.text.insert(tkinter.END, "{:14}".format(item.barcode), 'stockitem')
             self.text.insert(tkinter.END, "  ")
             self.text.insert(tkinter.END, "{:3}".format(sum([c.change for c in item.levelchange_set.all()])))
             self.text.insert(tkinter.END, " x  ")
             self.text.insert(tkinter.END, item)
             self.text.insert(tkinter.END, "\n")
 
+    def text_search(self, s):
+        if s.isdigit():
+            self.navigate(DisplayStockItem, self.list[int(s)])
+            return
+        super().text_search(s)
 
 class SearchStockResults(DisplayHandler):
     def __init__(self, root, string):

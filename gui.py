@@ -41,6 +41,8 @@ class TextApplication(tkinter.Tk):
         self.link_handlers[name](text)
 
     def configure_link(self, name, handler, **styles):
+        if not len(styles):
+            styles = {'font': self.font_bold}
         self.text.tag_configure(name, **styles)
         self.text.tag_bind(name, "<Enter>", show_hand_cursor)
         self.text.tag_bind(name, "<Leave>", hide_hand_cursor)
@@ -65,17 +67,17 @@ class TextApplication(tkinter.Tk):
         else:
             self.geometry('1100x900')
 
-        font = tkinter.font.Font(self, family='Courier', size=12, weight='normal')
-        font_bold = tkinter.font.Font(self, family='Courier', size=12, weight='bold')
-        font_underline = tkinter.font.Font(self, family='Courier', size=12, weight='normal', underline = True)
+        self.font_default = tkinter.font.Font(self, family='Courier', size=12, weight='normal')
+        self.font_bold = tkinter.font.Font(self, family='Courier', size=12, weight='bold')
+        self.font_underline = tkinter.font.Font(self, family='Courier', size=12, weight='normal', underline=True)
 
         scroll = tkinter.Scrollbar(self)
         scroll.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 
         self.text = tkinter.Text(self, yscrollcommand=scroll.set, wrap='none')
-        self.text.configure(font=font)
+        self.text.configure(font=self.font_default)
 
-        self.text.tag_configure('underline', font=font_underline)
+        self.text.tag_configure('underline', font=self.font_underline)
 
         self.text.tag_configure('text_input', background='Black', foreground='White')
         self.text.tag_configure('text_input_active', background='DarkBlue', foreground='White')
@@ -84,7 +86,7 @@ class TextApplication(tkinter.Tk):
         self.text['state'] = tkinter.DISABLED
 
         self.input_text = tkinter.Text(self, wrap='none', height=1, bg='Black', fg='White')
-        self.input_text.configure(font=font)
+        self.input_text.configure(font=self.font_default)
         self.input_text.pack(fill='both', expand=False)
 
         self.input_text['state'] = tkinter.NORMAL
