@@ -365,7 +365,7 @@ class PrintShoppingList(DisplayHandler):
 
 class Application(TextApplication):
     window_title = "ShoppingList"
-    icon_file = 'icon.png'
+    icon_file = os.path.join(os.path.dirname(__file__), 'icon.png')
     default_display = Home
     window_position_file = shoppingtracker.settings.DATA_DIR / 'window'
 
