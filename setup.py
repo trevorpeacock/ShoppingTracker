@@ -9,11 +9,12 @@ setup(
     packages=[
         'shoppingtracker',
         'shoppingtracker.db',
+        'shoppingtracker.db.migrations',
     ],
     scripts=[
         'run.py',
     ],
     package_data={
-        'shoppingtracker': ['icon.png']
+        'shoppingtracker': ['icon.png', 'bell.wav', 'woosh.wav']
     },
 )

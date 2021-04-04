@@ -12,14 +12,14 @@ def lookup_item_online(stockitem):
     print("Looking up", stockitem.barcode)
     sig = base64.b64encode(
         hmac.new(
-            settings.DIGITEYES_AUTH_KEY.encode('ascii'),
+            shoppingtracker.settings.DIGITEYES_AUTH_KEY.encode('ascii'),
             stockitem.barcode.encode('ascii'),
             hashlib.sha1
         ).digest()
     ).decode('ascii')
     search_result = requests.get(
         'https://www.digit-eyes.com/gtin/v2_0/?upcCode={}&field_names=all&language=en&app_key={}&signature={}'.format(
-            stockitem.barcode, settings.DIGITEYES_APP_KEY, sig)).json()
+            stockitem.barcode, shoppingtracker.settings.DIGITEYES_APP_KEY, sig)).json()
     print(search_result)
     if search_result['return_code'] == '0':
         if search_result['description']:
@@ -38,7 +38,7 @@ def lookup_item_online(stockitem):
         return True
     search_result = requests.get(
         "https://eandata.com/feed/?v=3&keycode={}&mode=json&find={}".format(
-            settings.EANDATA_KEY, stockitem.barcode)).json()
+            shoppingtracker.settings.EANDATA_KEY, stockitem.barcode)).json()
     print(search_result)
     if search_result['status']['code'] == '200':
         stockitem.name = search_result['product']['attributes']['product']

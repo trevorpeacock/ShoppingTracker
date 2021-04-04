@@ -18,7 +18,15 @@ from shoppingtracker.lookup_barcode import lookup_item_online
 import shoppingtracker.settings
 
 
+bell_file = os.path.join(os.path.dirname(__file__), 'bell.wav')
+woosh_file = os.path.join(os.path.dirname(__file__), 'woosh.wav')
+
+
 class Home(DisplayHandler):
+    def __init__(self, root):
+        super().__init__(root)
+        self.newitem = None
+
     def display_contents(self):
         self.text.insert(tkinter.END, "\n")
         self.text.insert(tkinter.END, "\n")
@@ -34,16 +42,27 @@ class Home(DisplayHandler):
         self.text.insert(tkinter.END, "     < > - Scan item to use\n")
         self.text.insert(tkinter.END, "      q  - Quit\n")
 
+    def run_return(self):
+        if self.newitem and self.newitem.id:
+            change = shoppingtracker.db.models.LevelChange()
+            change.item = self.newitem
+            change.change = -1
+            change.save()
+        self.newitem = None
+        super().run_return()
+
     def process_barcode(self, barcode):
-        #print("Barcode", barcode)
         try:
             stockitem = shoppingtracker.db.models.StockItem.objects.get(barcode=barcode.lower())
+            subprocess.call(['play', woosh_file])
             change = shoppingtracker.db.models.LevelChange()
             change.item = stockitem
             change.change = -1
             change.save()
         except shoppingtracker.db.models.StockItem.DoesNotExist:
-            subprocess.call(['play', 'bell.wav'])
+            self.newitem = shoppingtracker.db.models.StockItem()
+            self.newitem.barcode = barcode.lower()
+            self.navigate(LookupNewStockItem, self.newitem)
 
 
     def text_search(self, s):
@@ -69,9 +88,17 @@ class Home(DisplayHandler):
 class ListStock(DisplayHandler):
     def __init__(self, root):
         super().__init__(root)
-        self.list = list(shoppingtracker.db.models.StockItem.objects.all())
+        self.list = list(shoppingtracker.db.models.StockItem.objects.all().order_by('name'))
 
     key_input_handler_class = SelectionInputHandler
+
+    def run_new(self):
+        self.list = list(shoppingtracker.db.models.StockItem.objects.all().order_by('name'))
+        super().run_new()
+
+    def run_return(self):
+        self.list = list(shoppingtracker.db.models.StockItem.objects.all().order_by('name'))
+        super().run_return()
 
     def create_input_handler(self):
         self.input_handler = self.key_input_handler_class(self.displaynavigation, self, len(self.list))
@@ -260,7 +287,7 @@ class LookupNewStockItem(DisplayHandler):
 
     def run_new(self):
         super().run_new()
-        subprocess.call(['play', 'bell.wav'])
+        subprocess.call(['play', bell_file])
         self.displaynavigation.root.after(50, self.lookup_online)
 
     def lookup_online(self):

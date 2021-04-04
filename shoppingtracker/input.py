@@ -140,7 +140,7 @@ class BaseInputHandler(object):
 
 class BarcodeDetectionInputHandler(BaseInputHandler):
 
-    barcode_char_max_interval = 10 # Milliseconds
+    barcode_char_max_interval = 50 # Milliseconds
     barcode_min_length = 8
 
     def __init__(self, displaynavigation, displayhandler):
