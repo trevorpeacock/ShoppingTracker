@@ -1,5 +1,5 @@
 import tkinter
-from input import *
+from shoppingtracker.input import *
 
 
 class DisplayHandlerBase(object):

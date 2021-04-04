@@ -1,4 +1,4 @@
-from input import *
+from shoppingtracker.input import *
 
 
 class InputGroup(BaseInputHandler):

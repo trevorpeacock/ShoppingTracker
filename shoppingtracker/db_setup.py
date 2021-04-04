@@ -1,7 +1,7 @@
 # https://github.com/masnun/django-orm-standalone
 
 import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "shoppingtracker.settings")
 
 # Ensure settings are read
 from django.core.wsgi import get_wsgi_application

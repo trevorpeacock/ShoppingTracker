@@ -8,9 +8,13 @@ DIGITEYES_AUTH_KEY = ''
 DIGITEYES_APP_KEY = ''
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path('~/.shoppingtracker/').expanduser()
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '***UnusedSecret***'
@@ -20,7 +24,7 @@ DEBUG = True
 
 # Application definition
 INSTALLED_APPS = [
-    'db',
+    'shoppingtracker.db',
 ]
 
 
@@ -29,7 +33,7 @@ INSTALLED_APPS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': DATA_DIR / 'db.sqlite3',
     }
 }
 

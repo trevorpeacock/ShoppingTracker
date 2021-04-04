@@ -1,6 +1,6 @@
 import openfoodfacts
 import requests
-import settings
+import shoppingtracker.settings
 import hashlib
 import base64
 import hmac

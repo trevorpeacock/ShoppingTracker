@@ -2,9 +2,9 @@ import tkinter
 import tkinter.font
 import os
 import traceback
-from navigation import *
-from input import *
-from display import *
+from shoppingtracker.navigation import *
+from shoppingtracker.input import *
+from shoppingtracker.display import *
 
 
 def click_text(event, tag):
@@ -35,6 +35,7 @@ class TextApplication(tkinter.Tk):
     window_title = "Untitled"
     icon_file = None
     default_display = None
+    window_position_file = 'window'
 
     def link_click_handler(self, name, event):
         text = click_text(event, name)[2].strip()
@@ -61,8 +62,8 @@ class TextApplication(tkinter.Tk):
         if self.icon_file:
             self.iconphoto(False, tkinter.PhotoImage(file=self.icon_file))
         self.minsize(700, 500)
-        if os.path.exists('window'):
-            with open('window') as w:
+        if os.path.exists(self.window_position_file):
+            with open(self.window_position_file) as w:
                 self.geometry(w.read())
         else:
             self.geometry('1100x900')
@@ -112,6 +113,8 @@ class TextApplication(tkinter.Tk):
 
     def on_closing(self):
         self.displaynavigation.exit_all()
+        with open(self.window_position_file, 'w') as w:
+            w.write("{}x{}+{}+{}".format(self.winfo_width(), self.winfo_height(), self.winfo_x(), self.winfo_y() - 37))
         self.destroy()
 
     def handle_focus(self, e):

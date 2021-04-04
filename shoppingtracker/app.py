@@ -1,5 +1,7 @@
-import db_setup
-import db.models
+#!/usr/bin/env python3
+
+import shoppingtracker.db_setup
+import shoppingtracker.db.models
 import tkinter
 import tkinter.font
 import os
@@ -7,12 +9,13 @@ import datetime
 import decimal
 import traceback
 import subprocess
-from navigation import *
-from input import *
-from inputgroup import *
-from display import *
-from gui import TextApplication
-from lookup_barcode import lookup_item_online
+from shoppingtracker.navigation import *
+from shoppingtracker.input import *
+from shoppingtracker.inputgroup import *
+from shoppingtracker.display import *
+from shoppingtracker.gui import TextApplication
+from shoppingtracker.lookup_barcode import lookup_item_online
+import shoppingtracker.settings
 
 
 class Home(DisplayHandler):
@@ -34,12 +37,12 @@ class Home(DisplayHandler):
     def process_barcode(self, barcode):
         #print("Barcode", barcode)
         try:
-            stockitem = db.models.StockItem.objects.get(barcode=barcode.lower())
-            change = db.models.LevelChange()
+            stockitem = shoppingtracker.db.models.StockItem.objects.get(barcode=barcode.lower())
+            change = shoppingtracker.db.models.LevelChange()
             change.item = stockitem
             change.change = -1
             change.save()
-        except db.models.StockItem.DoesNotExist:
+        except shoppingtracker.db.models.StockItem.DoesNotExist:
             subprocess.call(['play', 'bell.wav'])
 
 
@@ -66,7 +69,7 @@ class Home(DisplayHandler):
 class ListStock(DisplayHandler):
     def __init__(self, root):
         super().__init__(root)
-        self.list = list(db.models.StockItem.objects.all())
+        self.list = list(shoppingtracker.db.models.StockItem.objects.all())
 
     key_input_handler_class = SelectionInputHandler
 
@@ -111,7 +114,7 @@ class SearchStockResults(DisplayHandler):
         self.text.insert(tkinter.END, f"  Query: {self.string}\n")
         self.text.insert(tkinter.END, f"\n")
         self.text.insert(tkinter.END, f"  Results:\n")
-        for item in db.models.StockItem.objects.all():
+        for item in shoppingtracker.db.models.StockItem.objects.all():
             if self.string.lower() in item.name.lower():
                 self.text.insert(tkinter.END, "  ")
                 self.text.insert(tkinter.END, "{:14}".format(item.barcode), 'stockitem')
@@ -136,10 +139,10 @@ class SearchStock(DisplayHandler):
 
     def text_search(self, s):
         try:
-            stockitem = db.models.StockItem.objects.get(barcode=s.lower())
+            stockitem = shoppingtracker.db.models.StockItem.objects.get(barcode=s.lower())
             self.navigate_replace(DisplayStockItem, stockitem)
             return
-        except db.models.StockItem.DoesNotExist:
+        except shoppingtracker.db.models.StockItem.DoesNotExist:
             pass
         if s.strip() == '':
             return
@@ -291,7 +294,7 @@ class AddStock(DisplayHandler):
 
     def run_exit(self):
         for item, quantity in self.list.items():
-            change = db.models.LevelChange()
+            change = shoppingtracker.db.models.LevelChange()
             change.item = item
             change.change = quantity
             change.save()
@@ -314,11 +317,11 @@ class AddStock(DisplayHandler):
             self.navigate_back()
             return
         try:
-            stockitem = db.models.StockItem.objects.get(barcode=s.lower())
+            stockitem = shoppingtracker.db.models.StockItem.objects.get(barcode=s.lower())
             self.add_item(stockitem)
             self.display()
-        except db.models.StockItem.DoesNotExist:
-            self.newitem = db.models.StockItem()
+        except shoppingtracker.db.models.StockItem.DoesNotExist:
+            self.newitem = shoppingtracker.db.models.StockItem()
             self.newitem.barcode = s.lower()
             self.navigate(LookupNewStockItem, self.newitem)
 
@@ -333,7 +336,7 @@ class PrintShoppingList(DisplayHandler):
         self.text.insert(tkinter.END, "\n")
         self.text.insert(tkinter.END, "Type p then enter to print. Press ESC to go back.\n")
         self.text.insert(tkinter.END, "\n")
-        for item in db.models.StockItem.objects.all():
+        for item in shoppingtracker.db.models.StockItem.objects.all():
             levelchanges = list(item.levelchange_set.all().order_by('date'))
             levelchanges_pos = [c for c in levelchanges if c.change > 0]
             levelchanges_neg = [c for c in levelchanges if c.change < 0]
@@ -364,9 +367,10 @@ class Application(TextApplication):
     window_title = "ShoppingList"
     icon_file = 'icon.png'
     default_display = Home
+    window_position_file = shoppingtracker.settings.DATA_DIR / 'window'
 
     def stock_item_link_handler(self, text):
-        stockitem = db.models.StockItem.objects.get(barcode=text)
+        stockitem = shoppingtracker.db.models.StockItem.objects.get(barcode=text)
         self.displaynavigation.navigate(DisplayStockItem, stockitem)
 
     def __init__(self):

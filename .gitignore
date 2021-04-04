@@ -3,3 +3,11 @@ db.sqlite3
 window
 __pycache__
 .idea
+build/
+/debian/.debhelper/generated/shoppingtracker/
+/debian/shoppingtracker/
+/debian/files
+/debian/shoppingtracker.debhelper.log
+/debian/shoppingtracker.postinst.debhelper
+/debian/shoppingtracker.prerm.debhelper
+/debian/shoppingtracker.substvars
