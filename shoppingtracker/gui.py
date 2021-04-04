@@ -118,10 +118,15 @@ class TextApplication(tkinter.Tk):
         self.destroy()
 
     def handle_focus(self, e):
-        clipboard = self.clipboard_get()
-        if clipboard != self.last_clipboard_contents:
-            self.last_clipboard_contents = clipboard
-            self.displaynavigation.clipboard_search(clipboard)
+        try:
+            clipboard = self.clipboard_get()
+            if clipboard != self.last_clipboard_contents:
+                self.last_clipboard_contents = clipboard
+                self.displaynavigation.clipboard_search(clipboard)
+        except tkinter.TclError as e:
+            # check if clipboard is empty
+            if e.args == ('CLIPBOARD selection doesn\'t exist or form "STRING" not defined',):
+                pass
 
     def show_error(self, *args):
         err = traceback.format_exception(*args)
